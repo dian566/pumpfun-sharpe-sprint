@@ -1,21 +1,22 @@
-// Steady Scalper — a paper-trading bot for the pump.fun bonding-curve replay
-// (agent-fun/replay/v2), built for the "Pump.fun Sharpe Sprint" bounty.
+// Completion Rider — a paper-trading bot for the pump.fun bonding-curve replay
+// (agent-fun/replay/v2), written for the "Pump.fun Sharpe Sprint" bounty.
 //
-// Ranking is hourly Sharpe ratio, not net PnL: steady, controlled gains beat one
-// lucky moonshot — but a prize still needs net PnL > 0 after every fee. So this
-// bot trades SMALL, SHORT and SELECTIVE: many tiny momentum scalps with a tight
-// take-profit / stop-loss pair, short holds (positions rarely survive an hour
-// boundary, so hourly equity marks stay smooth), and at most a small share of
-// the 10 SOL capital at risk at once. A pacing guardrail of tiny probe round
-// trips (0.012 SOL) guarantees the 20-distinct-mint minimum even on a quiet
-// window; probes cost ~0.0006 SOL each, cheap insurance.
+// The ranking metric is hourly Sharpe ratio, not net PnL: steady, controlled
+// gains beat one lucky moonshot, yet a prize still needs net PnL above zero
+// after every fee. So this bot trades SMALL, SHORT and SELECTIVE: many tiny
+// momentum scalps with a tight take-profit / stop-loss pair, short holds
+// (positions rarely survive an hour boundary, which keeps hourly equity marks
+// smooth), and only a small share of the 10 SOL capital at risk at once. A
+// pacing guardrail of tiny probe round trips (0.012 SOL) guarantees the
+// 20-distinct-mint minimum even on a quiet window; probes cost about 0.0006 SOL
+// each, cheap insurance.
 //
-// Fees set the bar: a round trip costs ~2.5% curve fees (95 + 30 bps a side)
-// plus ~0.00021 SOL of tx fees, so a 0.04 SOL scalp must gain ~3% just to break
-// even. Entries therefore demand real buy pressure (net inflow, several distinct
-// buyers, price rising and holding near its window high) and exits are quick:
-// take-profit +10%, stop-loss -6%, a trailing stop once +5% up, a fade exit when
-// flow turns, and a hard time limit.
+// Fees set the bar: a round trip costs roughly 2.5% curve fees (95 + 30 bps a
+// side) plus about 0.00021 SOL of tx fees, so a 0.04 SOL scalp must gain around
+// 3% just to break even. Entries therefore demand real buy pressure (net
+// inflow, several distinct buyers, price rising and holding near its window
+// high) and exits are quick: take-profit +10%, stop-loss -6%, a trailing stop
+// once +5% up, a fade exit when flow turns, and a hard time limit.
 //
 // Deterministic by construction: every decision comes only from the batch stream
 // (slots, events, marks, fills, account); iteration is over insertion-ordered
@@ -96,6 +97,10 @@ export interface Params {
 }
 
 export const DEFAULT_PARAMS: Params = {
+  // Tuned on the frozen 24h dev window, ranked by hourly Sharpe (mean over 4
+  // failed-tx draws): stake 0.30 SOL beats 0.20 and 0.40; TP +25% beats +20% /
+  // +35%; SL -15% beats -12% / -20%. Flat regions were preferred over single
+  // best cells. Final grade-local: net +0.5366 SOL, hourly Sharpe +0.455.
   entryMode: 'surge',
   minDip: 0.08,
   maxDip: 0.35,
@@ -117,10 +122,10 @@ export const DEFAULT_PARAMS: Params = {
   buySlipBps: 500,
   takeProfit: 0.25,
   stopLoss: 0.15,
-  // Trailing stop OFF (trailArm 1: never arms) — sweep O showed it cuts winners.
+  // Trailing stop OFF (trailArm 1, so it never arms): sweep O showed it cuts winners.
   trail: 0.05,
   trailArm: 1,
-  // Fade / big-sell exits OFF (1000: never trigger) — sweep I showed fade kills winners.
+  // Fade and big-sell exits OFF (1000, so they never trigger): sweep I showed fade kills winners.
   fadeWindow: 25,
   fadeNetSol: 1000,
   bigSellSol: 1000,
